@@ -25,8 +25,13 @@ namespace CheapAwesome
 
         public void ConfigureServices(IServiceCollection services)
         {
+            var ApiServerUrl = Configuration.GetSection("APIServer")["Webbedserver"];
             services.AddTransient<IBargainService, BargainService>();
-            services.AddControllers();
+            services.AddHttpClient("BargainService", client =>
+            {
+                client.BaseAddress = new Uri(ApiServerUrl);
+            }).SetHandlerLifetime(System.Threading.Timeout.InfiniteTimeSpan);
+             services.AddControllers();
         }
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
