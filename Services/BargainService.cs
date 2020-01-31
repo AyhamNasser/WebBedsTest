@@ -10,29 +10,39 @@ namespace CheapAwesome.Services
 {
     public class BargainService : IBargainService
     {
-        private readonly IHttpClientFactory _clientFactory;
-        public BargainService(IHttpClientFactory clientFactory)
+        //used HTTPclient without factory increase the execution time to 6 sc
+        private readonly HttpClient _client;
+
+        public BargainService(HttpClient client)
         {
-            this._clientFactory = clientFactory;
+            this._client = client;
         }
-        public async Task<List<HotelRates>> FindBargain(int night, int destinationId)
+      
+        private  HttpRequestMessage CreateRequest(int nights, int destinationId)
+        {
+            var path = _client.BaseAddress.AbsoluteUri +$"&destinationId={destinationId}&nights={nights}";
+            return new HttpRequestMessage(HttpMethod.Get, new Uri(path));
+        }
+        public async Task<List<HotelRates>> FindBargain(int nights, int destinationId)
         {
             try
-
             {
-                var _client = this._clientFactory.CreateClient("BargainService");
-                var streamTask = await _client.GetStreamAsync($"?code=aWH1EX7ladA8C/oWJX5nVLoEa4XKz2a64yaWVvzioNYcEo8Le8caJw==&destinationId={destinationId}&nights={night}");
-                var result = await JsonSerializer.DeserializeAsync<List<HotelRates>>(streamTask);
+                var request = CreateRequest(nights,destinationId);
+             
+                var result = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
-
-
-                Parallel.ForEach(result.Where(x => x.rates.Any(x => x.rateType == "PerNight")).Select(x => x.rates).ToList(), item =>
+                using (var contentStream = await result.Content.ReadAsStreamAsync())
                 {
-                    Parallel.ForEach(item, rate => { rate.value = rate.value * night; });
-                });
+                    var data = await JsonSerializer.DeserializeAsync<List<HotelRates>>(contentStream);
 
+                    Parallel.ForEach(data.Where(x => x.rates.Any(x => x.rateType == "PerNight")).Select(x => x.rates).ToList(), item =>
+                    {
+                        Parallel.ForEach(item, rate => { rate.value = rate.value * nights; });
+                    });
+                    return data;
+                }
+                 
 
-                return result;
             }
             catch (Exception ex)
             {

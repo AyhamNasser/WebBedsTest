@@ -19,9 +19,9 @@ namespace CheapAwesome.Controllers
             _bargainService = bargainService;
 
         }
-        public async Task<IActionResult> Index(int night,int destinationId)
+        public async Task<IActionResult> Index(int nights,int destinationId)
         {
-            var result = await _bargainService.FindBargain(night, destinationId);
+            var result = await _bargainService.FindBargain(nights, destinationId);
 
             return Ok(result);
         }
